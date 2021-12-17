@@ -18,7 +18,7 @@ class PlayerStream {
   }
 
   /// Initialize Player with specified [sampleRate]
-  Future<dynamic> initialize({int sampleRate = 16000, bool showLogs = false}) =>
+  Future<dynamic> initialize({int sampleRate = 8000, bool showLogs = false}) =>
       _methodChannel.invokeMethod("initializePlayer", {
         "sampleRate": sampleRate,
         "showLogs": showLogs,

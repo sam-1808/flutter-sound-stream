@@ -58,7 +58,7 @@ public class SoundStreamPlugin : FlutterPlugin,
 
     //========= Recorder's vars
     private val mRecordFormat = AudioFormat.ENCODING_PCM_16BIT
-    private var mRecordSampleRate = 16000 // 16Khz
+    private var mRecordSampleRate = 8000 // 16Khz
     private var mRecorderBufferSize = 8192
     private var mPeriodFrames = 8192
     private var audioData: ShortArray? = null
@@ -67,7 +67,7 @@ public class SoundStreamPlugin : FlutterPlugin,
 
     //========= Player's vars
     private var mAudioTrack: AudioTrack? = null
-    private var mPlayerSampleRate = 16000 // 16Khz
+    private var mPlayerSampleRate = 8000 // 16Khz
     private var mPlayerBufferSize = 10240
     private var mPlayerFormat: AudioFormat = AudioFormat.Builder()
             .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
@@ -264,6 +264,9 @@ public class SoundStreamPlugin : FlutterPlugin,
 
     private fun startRecording(result: Result) {
         try {
+            Log.d("START RECORDER", "***********")
+            Log.d("START RECORDER", "trying to start recording (try)")
+            Log.d("START RECORDER", "***********")
             if (mRecorder!!.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
                 result.success(true)
                 return
@@ -273,6 +276,9 @@ public class SoundStreamPlugin : FlutterPlugin,
             sendRecorderStatus(SoundStreamStatus.Playing)
             result.success(true)
         } catch (e: IllegalStateException) {
+            Log.d("START RECORDER", "***********")
+            Log.d("START RECORDER", "trying to start recording (catch) : $e")
+            Log.d("START RECORDER", "***********")
             debugLog("record() failed")
             result.error(SoundStreamErrors.FailedToRecord.name, "Failed to start recording", e.localizedMessage)
         }
@@ -280,6 +286,9 @@ public class SoundStreamPlugin : FlutterPlugin,
 
     private fun stopRecording(result: Result) {
         try {
+            Log.d("STOP RECORDER", "***********")
+            Log.d("STOP RECORDER", "trying to stop recording (try)")
+            Log.d("STOP RECORDER", "***********")
             if (mRecorder!!.recordingState == AudioRecord.RECORDSTATE_STOPPED) {
                 result.success(true)
                 return
@@ -288,6 +297,9 @@ public class SoundStreamPlugin : FlutterPlugin,
             sendRecorderStatus(SoundStreamStatus.Stopped)
             result.success(true)
         } catch (e: IllegalStateException) {
+            Log.d("STOP RECORDER", "***********")
+            Log.d("STOP RECORDER", "trying to stop recording (catch) : $e")
+            Log.d("STOP RECORDER", "***********")
             debugLog("record() failed")
             result.error(SoundStreamErrors.FailedToRecord.name, "Failed to start recording", e.localizedMessage)
         }
@@ -362,12 +374,18 @@ public class SoundStreamPlugin : FlutterPlugin,
 
     private fun stopPlayer(result: Result) {
         try {
+            Log.d("STOP PLAYER", "***********")
+            Log.d("STOP PLAYER", "trying to stop player (try)")
+            Log.d("STOP PLAYER", "***********")
             if (mAudioTrack?.state == AudioTrack.STATE_INITIALIZED) {
                 mAudioTrack?.stop()
             }
             sendPlayerStatus(SoundStreamStatus.Stopped)
             result.success(true)
         } catch (e: Exception) {
+            Log.d("STOP PLAYER", "***********")
+            Log.d("STOP PLAYER", "trying to stop player (catch) : $e")
+            Log.d("STOP PLAYER", "***********")
             result.error(SoundStreamErrors.FailedToStop.name, "Failed to stop Player", e.localizedMessage)
         }
     }
@@ -383,14 +401,53 @@ public class SoundStreamPlugin : FlutterPlugin,
             }
 
             override fun onPeriodicNotification(recorder: AudioRecord) {
-                val data = audioData!!
-                val shortOut = recorder.read(data, 0, mPeriodFrames)
-                // https://flutter.io/platform-channels/#codec
-                // convert short to int because of platform-channel's limitation
-                val byteBuffer = ByteBuffer.allocate(shortOut * 2)
-                byteBuffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(data)
+                var data = audioData!!
+                Log.d("DATA", "$data")
+                try {
+                    if (data != null) {
+                        val shortOut = recorder.read(data, 0, mPeriodFrames)
+                        if (shortOut > 0) {
+                            var state = recorder.getState()
+                            Log.d("RECORDER STATE", "$state")
+                            if (state != AudioRecord.STATE_INITIALIZED) {
+                                Log.d("RECORDER STATE", "recorder's state is not Initialized")
+                                recorder.release();
+                            } else {
+                                var bufferShort = shortOut * 2
+                                Log.d("CREATE RECORD LISTENER", "***********")
+                                Log.d("CREATE RECORD LISTENER", "(try) $shortOut")
+                                Log.d("CREATE RECORD LISTENER", "(try) $bufferShort")
+                                Log.d("CREATE RECORD LISTENER", "***********")
+                                val byteBuffer = ByteBuffer.allocate(bufferShort)
+                                byteBuffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(data)
 
-                sendEventMethod("dataPeriod", byteBuffer.array())
+                                sendEventMethod("dataPeriod", byteBuffer.array())
+                            }
+                        }
+
+
+                        // val shortOut = recorder.read(data, 0, mPeriodFrames)
+                        // // https://flutter.io/platform-channels/#codec
+                        // // convert short to int because of platform-channel's limitation
+                        // // val byteBuffer = ByteBuffer.allocate(shortOut * 2)
+                        // var bufferShort = shortOut * 2
+                        // Log.d("CREATE RECORD LISTENER", "***********")
+                        // Log.d("CREATE RECORD LISTENER", "(try) $shortOut")
+                        // Log.d("CREATE RECORD LISTENER", "(try) $bufferShort")
+                        // Log.d("CREATE RECORD LISTENER", "***********")
+                        // val byteBuffer = ByteBuffer.allocate(bufferShort)
+                        // // byteBuffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(data)
+                        // byteBuffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(data)
+
+                        // sendEventMethod("dataPeriod", byteBuffer.array())
+                    } else {
+                        Log.d("DATA", "data == null")
+                    }
+                } catch (e: Exception) {
+                    Log.d("CREATE RECORD LISTENER", "***********")
+                    Log.d("CREATE RECORD LISTENER", "(catch) : $e")
+                    Log.d("CREATE RECORD LISTENER", "***********")
+                }
             }
         }
     }
